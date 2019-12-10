@@ -1,0 +1,5 @@
+addr: localhost:8080
+debug: true
+aof:
+  fsync: 2
+  filename: ./aof.log
