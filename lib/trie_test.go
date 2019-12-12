@@ -1,55 +1,53 @@
 package lib
 
 import (
+	"fmt"
+	"github.com/open-ds/sm/tests"
+	"sync"
 	"testing"
 )
 
-func TestTrie_Find(t *testing.T) {
-	trie := NewTrie()
-	keyList := []string{"ABCD", "ABC", "AB", "A", "B", "C", "BCD"}
+func TestTrie_Insert(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		trie := NewTrie()
+		var w sync.WaitGroup
+		keyChan := make(chan string, 100)
+		keyMap := make(map[string]bool)
 
-	for _, key := range keyList {
-		trie.Insert([]byte(key), key)
-	}
+		for i := 0; i < 100; i++ {
+			w.Add(1)
+			go func() {
+				for {
+					key, ok := <-keyChan
 
-	for _, key := range keyList {
-		ret, value := trie.Find([]byte(key))
-		if ret == false {
-			t.Error("find or insert error")
-			return
+					if !ok {
+						w.Done()
+						break
+					}
+					trie.Insert([]byte(key), key)
+				}
+			}()
 		}
-		if value != key {
-			t.Error("key value is error")
-			return
+
+		for _, term := range tests.GetTerms("../tests/terms.json") {
+			keyChan <- term.Ci
+			keyMap[term.Ci] = true
 		}
-	}
 
-	if trie.NumberKey != int32(len(keyList)) {
-		t.Error("key number is wrong")
-	}
-}
+		close(keyChan)
+		w.Wait()
 
-func TestTrie_Remove(t *testing.T) {
-	trie := NewTrie()
-
-	keyList := []string{"ABCD", "ABC", "AB", "A", "B", "C", "BCD"}
-
-	for _, key := range keyList {
-		trie.Insert([]byte(key), nil)
-	}
-
-	for idx, key := range keyList {
-		trie.Remove([]byte(key))
-
-		if trie.NumberKey != int32(len(keyList)-idx-1) {
-			t.Error("remove test failed")
-			return
+		if trie.NumberKey != int32(len(keyMap)) {
+			t.Error(fmt.Sprintf("trie number key: %d key map: %d", trie.NumberKey, len(keyMap)))
 		}
-		ret, _ := trie.Find([]byte(key))
 
-		if ret {
-			t.Error("remove test failed")
-			return
+		for _, term := range tests.GetTerms("../tests/terms.json") {
+			//fmt.Println(term.Ci)
+			ret, value := trie.Find([]byte(term.Ci))
+			if !ret || value != term.Ci {
+				t.Error(fmt.Sprintf("key %s not found %d", term.Ci, trie.NumberKey))
+			}
+
 		}
 	}
 }
