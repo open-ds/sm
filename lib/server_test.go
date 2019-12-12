@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -47,17 +47,16 @@ func CreateTrie(name string) error {
 func InsertKey(c *http.Client, key string) error {
 	url := "http://localhost:8080/api/trie/test"
 	contentType := "application/json"
-	st := time.Now()
 	resp, err := c.Post(url, contentType, strings.NewReader(fmt.Sprintf(`["%s"]`, key)))
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Insert ", key, resp.StatusCode, time.Since(st))
 	if resp.StatusCode != 200 {
 		body, _ := ioutil.ReadAll(resp.Body)
 		return errors.New(fmt.Sprintf(`%d %s %s`, resp.StatusCode, string(body), key))
 	}
+	_, err = io.Copy(ioutil.Discard, resp.Body)
 
 	resp.Body.Close()
 
@@ -90,14 +89,14 @@ type Config struct {
 }
 
 func TestServer_Insert(t *testing.T) {
-	err := os.Remove("./aof.log")
-	if err != nil {
-		t.Error(err.Error())
-		return
-	}
+	//err := os.Remove("./aof.log")
+	//if err != nil {
+	//	t.Error(err.Error())
+	//	return
+	//}
 
 	wg := sync.WaitGroup{}
-	err = CreateTrie("test")
+	err := CreateTrie("test")
 	keyMap := make(map[string]bool)
 	if err != nil {
 		t.Error(err.Error())

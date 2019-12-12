@@ -296,7 +296,7 @@ func (server *Server) InitHTTPServer() {
 	}
 
 	go func() {
-		fmt.Println("Init HTTP Server... ", server.Config.Addr)
+		log.Printf("Init HTTP Server addr: %s\n", server.Config.Addr)
 		if err := http.ListenAndServe(server.Config.Addr, r); err != nil {
 			log.Fatal(err.Error())
 		}
@@ -323,6 +323,7 @@ func NewServer() *Server {
 }
 
 func (server *Server) InitConfig(configFile string) {
+	log.Printf("Load config file: %s\n", configFile)
 	var err error
 	var buf []byte
 
