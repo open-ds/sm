@@ -129,6 +129,7 @@ func (trie *Trie) Insert(key []byte, value interface{}) (oldValue interface{}, r
 		} else {
 			trie.increaseNumberNode()
 			node = CreateNode(i == keyLen-1, i)
+			node.Value = value
 			parent.Children[order] = node
 			if i == keyLen-1 {
 				trie.increaseNumberKey()
