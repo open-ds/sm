@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
-	"fileSyncGo/src/gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
