@@ -120,7 +120,8 @@ func (aof *AofWriter) Cron() {
 	if aof.Fsync == 2 {
 		aof.Ticker = time.NewTicker(time.Second)
 		go func() {
-			for range aof.Ticker.C {
+			for {
+				<-aof.Ticker.C
 				aof.Flush()
 				aof.Sync()
 			}
