@@ -27,13 +27,13 @@ func ConvertInsert(name string, key string, value string) []byte {
 	op := "INSERT"
 	params := []string{
 		"*4",
-		strconv.Itoa(len(op)),
+		"$" + strconv.Itoa(len(op)),
 		op,
-		strconv.Itoa(len(name)),
+		"$" + strconv.Itoa(len(name)),
 		name,
-		strconv.Itoa(len(key)),
+		"$" + strconv.Itoa(len(key)),
 		key,
-		strconv.Itoa(len(value)),
+		"$" + strconv.Itoa(len(value)),
 		value,
 	}
 	cmd := strings.Join(params, "\r\n")
@@ -45,11 +45,11 @@ func ConvertRemove(name string, key string) []byte {
 
 	params := []string{
 		"*3",
-		strconv.Itoa(len(op)),
+		"$" + strconv.Itoa(len(op)),
 		op,
-		strconv.Itoa(len(name)),
+		"$" + strconv.Itoa(len(name)),
 		name,
-		strconv.Itoa(len(key)),
+		"$" + strconv.Itoa(len(key)),
 		key,
 	}
 	cmd := strings.Join(params, "\r\n")
