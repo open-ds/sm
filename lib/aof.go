@@ -1,6 +1,9 @@
 package lib
 
 import (
+	"bufio"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -70,6 +73,7 @@ func NewAOF(filename string) *AofWriter {
 }
 
 func (aof *AofWriter) Feed(cmd []byte) {
+	log.Println(string(cmd))
 	aof.Mutex.Lock()
 	aof.Buffer = append(aof.Buffer, cmd...)
 	aof.CurrentOffset += int32(len(cmd))
@@ -127,4 +131,57 @@ func (aof *AofWriter) Cron() {
 			}
 		}()
 	}
+}
+
+func (aof *AofWriter) Load(server *Server) {
+	reader := bufio.NewReader(aof.File)
+	count := 0
+	for {
+		buf, _, err := reader.ReadLine()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Fatalln(err.Error())
+		}
+
+		if buf[0] != 42 {
+			log.Fatalln("aof file format error")
+		}
+
+		lenArgc, err := strconv.ParseInt(string(buf[1:]), 10, 32)
+
+		if err != nil {
+			log.Fatalln(err.Error())
+		}
+		for i := 0; i < int(lenArgc); i++ {
+			buf, _, err = reader.ReadLine()
+
+			if buf[0] != 36 {
+				log.Fatalln("aof file format error")
+			}
+
+			lenValue, err := strconv.ParseInt(string(buf[1:]), 10, 32)
+
+			if err != nil {
+				log.Fatalln(err.Error())
+			}
+
+			value := make([]byte, lenValue+2)
+			if lenValue == 0 {
+				value = nil
+				continue
+			} else {
+				_, err = io.ReadFull(reader, value)
+				if err != nil {
+					log.Fatalln(err.Error())
+				}
+			}
+
+		}
+		count++
+	}
+	fmt.Println(count)
 }
