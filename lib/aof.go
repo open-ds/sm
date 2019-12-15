@@ -2,7 +2,6 @@ package lib
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -13,6 +12,7 @@ import (
 )
 
 type AofWriter struct {
+	Filename      string
 	Buffer        []byte
 	Mutex         sync.RWMutex
 	SyncOffset    int32
@@ -60,6 +60,7 @@ func ConvertRemove(name string, key string) []byte {
 }
 
 func NewAOF(filename string) *AofWriter {
+	log.Printf("Load config file: %s\n", filename)
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0664)
 
 	if err != nil {
@@ -69,6 +70,7 @@ func NewAOF(filename string) *AofWriter {
 	aof := &AofWriter{}
 	aof.File = file
 	aof.Fsync = 2 // default fsync every second
+	aof.Filename = filename
 	return aof
 }
 
@@ -134,8 +136,8 @@ func (aof *AofWriter) Cron() {
 }
 
 func (aof *AofWriter) Load(server *Server) {
+	log.Printf("AOF Load from file %s\n", aof.Filename)
 	reader := bufio.NewReader(aof.File)
-	count := 0
 	for {
 		buf, _, err := reader.ReadLine()
 
@@ -156,6 +158,7 @@ func (aof *AofWriter) Load(server *Server) {
 		if err != nil {
 			log.Fatalln(err.Error())
 		}
+		cmd := make([][]byte, 0)
 		for i := 0; i < int(lenArgc); i++ {
 			buf, _, err = reader.ReadLine()
 
@@ -172,7 +175,6 @@ func (aof *AofWriter) Load(server *Server) {
 			value := make([]byte, lenValue+2)
 			if lenValue == 0 {
 				value = nil
-				continue
 			} else {
 				_, err = io.ReadFull(reader, value)
 				if err != nil {
@@ -180,8 +182,13 @@ func (aof *AofWriter) Load(server *Server) {
 				}
 			}
 
+			cmd = append(cmd, value[0:lenValue])
 		}
-		count++
+		switch len(cmd) {
+		case 4:
+			server.Insert(string(cmd[1]), cmd[2], cmd[3])
+		case 3:
+			server.Remove(string(cmd[1]), cmd[2])
+		}
 	}
-	fmt.Println(count)
 }

@@ -2,7 +2,6 @@ package lib
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"gopkg.in/yaml.v2"
@@ -55,24 +54,21 @@ func (server *Server) GetTrie(name string) *Trie {
 	return trie
 }
 
-func (server *Server) Insert(name string, key []byte, value interface{}) error {
+func (server *Server) Insert(name string, key []byte, value interface{}) {
 	trie, ok := server.DB[name]
 	if !ok {
-		return errors.New(fmt.Sprintf("trie name `%s` not found", name))
+		trie = NewTrie()
+		server.DB[name] = trie
 	}
 	trie.Insert(key, value)
-	server.AOF.Feed(ConvertInsert(name, string(key), ""))
-	return nil
 }
 
-func (server *Server) Remove(name string, key string) error {
+func (server *Server) Remove(name string, key []byte) {
 	trie, ok := server.DB[name]
 	if !ok {
-		return errors.New(fmt.Sprintf("trie name `%s` not found", name))
+		return
 	}
-	trie.Remove([]byte(key))
-	server.AOF.Feed(ConvertRemove(name, key))
-	return nil
+	trie.Remove(key)
 }
 
 func (server *Server) HandleSearch(w http.ResponseWriter, r *http.Request) {
@@ -149,10 +145,8 @@ func (server *Server) HandleKeyInsert(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, key := range postData {
-		if err := server.Insert(name, []byte(key), nil); err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
+		server.Insert(name, []byte(key), nil)
+		server.AOF.Feed(ConvertInsert(name, string(key), ""))
 	}
 
 	if err := json.NewEncoder(w).Encode(make(map[string]interface{})); err != nil {
@@ -166,10 +160,8 @@ func (server *Server) HandleKeyRemove(w http.ResponseWriter, r *http.Request) {
 	name := params["name"]
 	key := params["key"]
 
-	if err := server.Remove(name, key); err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
+	server.Remove(name, []byte(key))
+	server.AOF.Feed(ConvertRemove(name, key))
 
 	if err := json.NewEncoder(w).Encode(make(map[string]interface{})); err != nil {
 		http.Error(w, err.Error(), 500)
@@ -341,6 +333,12 @@ func (server *Server) InitConfig(configFile string) {
 }
 
 func (server *Server) Serve() {
+	if server.Config.AOF.Fsync == 2 {
+		server.AOF.Load(server)
+		for name, trie := range server.DB {
+			fmt.Println(name, trie.NumberNode, trie.NumberKey)
+		}
+	}
 	signals := make(chan os.Signal)
 	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	server.InitHTTPServer()
