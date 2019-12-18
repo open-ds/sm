@@ -5,8 +5,9 @@ import (
 )
 
 type Item struct {
-	Key  []byte
-	Node *Node
+	Key    []byte
+	Node   *Node
+	Parent *Node
 }
 
 type Queue struct {
@@ -19,8 +20,8 @@ func NewQueue() *Queue {
 	return queue
 }
 
-func (q *Queue) Put(key []byte, node *Node) {
-	item := &Item{Key: key, Node: node}
+func (q *Queue) Put(key []byte, node *Node, parent *Node) {
+	item := &Item{Key: key, Node: node, Parent: parent}
 	q.List.PushBack(item)
 }
 
@@ -28,16 +29,16 @@ func (q *Queue) Empty() bool {
 	return q.List.Len() == 0
 }
 
-func (q *Queue) Get() (key []byte, node *Node) {
+func (q *Queue) Get() (key []byte, node *Node, parent *Node) {
 	if q.Empty() {
-		return key, node
+		return key, node, parent
 	}
 
 	element := q.List.Front()
 	q.List.Remove(element)
 	value := element.Value
 	item, _ := value.(*Item)
-	return item.Key, item.Node
+	return item.Key, item.Node, item.Parent
 }
 
 type Stack struct {
@@ -74,9 +75,9 @@ type Iterator struct {
 	Queue *Queue
 }
 
-func NewIterator(key []byte, node *Node) (it *Iterator) {
+func NewIterator(key []byte, node *Node, parent *Node) (it *Iterator) {
 	it = &Iterator{Queue: NewQueue()}
-	it.Queue.Put(key, node)
+	it.Queue.Put(key, node, parent)
 	return it
 }
 
@@ -84,15 +85,15 @@ func (it *Iterator) HasNext() bool {
 	return it != nil && !it.Queue.Empty()
 }
 
-func (it *Iterator) Next() (key []byte, node *Node) {
-	key, node = it.Queue.Get()
+func (it *Iterator) Next() (key []byte, node *Node, parent *Node) {
+	key, node, parent = it.Queue.Get()
 
 	for ord, child := range node.Children {
 		suffix := make([]byte, len(key))
 		copy(suffix, key)
 		suffix = append(suffix, ord)
-		it.Queue.Put(suffix, child)
+		it.Queue.Put(suffix, child, node)
 	}
 
-	return key, node
+	return key, node, parent
 }

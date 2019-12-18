@@ -13,6 +13,7 @@ type Node struct {
 	Height   int
 	Value    interface{}
 	Lock     sync.Mutex
+	Fail     *Node
 }
 
 type Trie struct {
@@ -22,7 +23,7 @@ type Trie struct {
 }
 
 func NewTrie() *Trie {
-	root := &Node{IsKey: false, Children: make(map[uint8]*Node), Height: 0}
+	root := &Node{IsKey: false, Children: make(map[uint8]*Node), Height: -1}
 	trie := &Trie{Root: root, NumberNode: 0, NumberKey: 0}
 	return trie
 }
@@ -129,9 +130,9 @@ func (trie *Trie) Insert(key []byte, value interface{}) (oldValue interface{}, r
 		} else {
 			trie.increaseNumberNode()
 			node = CreateNode(i == keyLen-1, i)
-			node.Value = value
 			parent.Children[order] = node
 			if i == keyLen-1 {
+				node.Value = value
 				trie.increaseNumberKey()
 			}
 			parent.Lock.Unlock()
@@ -210,7 +211,7 @@ func (trie *Trie) SeekAfter(key []byte) (it *Iterator) {
 		return it
 	}
 
-	it = NewIterator(key, node)
+	it = NewIterator(key, node, nil)
 	return it
 }
 
@@ -235,19 +236,19 @@ func (trie *Trie) SeekBefore(key []byte) []int {
 	return flags
 }
 
-func (trie *Trie) BFS(fn func(key []byte, node *Node)) {
+func (trie *Trie) BFS(fn func(key []byte, node *Node, parent *Node)) {
 	queue := NewQueue()
-	queue.Put(make([]byte, 0), trie.Root)
+	queue.Put(make([]byte, 0), trie.Root, nil)
 
 	for !queue.Empty() {
-		suffix, node := queue.Get()
-		fn(suffix, node)
+		suffix, node, parent := queue.Get()
+		fn(suffix, node, parent)
 
 		for ord, child := range node.Children {
 			path := make([]byte, len(suffix))
 			copy(path, suffix)
 			path = append(path, ord)
-			queue.Put(path, child)
+			queue.Put(path, child, node)
 		}
 	}
 }
