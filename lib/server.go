@@ -111,7 +111,7 @@ func (server *Server) HandleSearch(w http.ResponseWriter, r *http.Request) {
 			it := trie.SeekAfter([]byte(key))
 			count := 0
 			for it.HasNext() && count < searchRequest.Limit {
-				k, node := it.Next()
+				k, node, _ := it.Next()
 				if node.IsKey {
 					searchResponse[key] = append(searchResponse[key], string(k))
 				}
